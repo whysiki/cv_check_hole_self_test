@@ -181,6 +181,19 @@ def single_image_processing(image_path: str, show_image=False):
 
     # 数据字典，连通区数量，各个连通区域的面积，边界矩形的坐标
     boundingRects = [cv2.boundingRect(contour) for contour in contours]
+
+    def process_data(data, key, round_score=6):
+        if len(data[key]) > 0:
+            data[key] = [round(x, round_score) for x in data[key]]
+            data[key + "_平均值"] = np.mean(data[key])
+            data[key + "_最大值"] = np.max(data[key])
+            data[key + "_最小值"] = np.min(data[key])
+        else:
+            data[key] = []
+            data[key + "_平均值"] = 0
+            data[key + "_最大值"] = 0
+            data[key + "_最小值"] = 0
+
     data = {
         "连通区数量": len(contours),
         "各个连通区域的面积": [w * h for x, y, w, h in boundingRects],
@@ -189,58 +202,9 @@ def single_image_processing(image_path: str, show_image=False):
         "各个拟合椭圆离心率": curvature_list,
     }
 
-    # 保留五位小数
-    round_score = 6
-    data["各个连通区域的面积"] = [
-        round(x, round_score) for x in data["各个连通区域的面积"]
-    ]
-    data["各个轮廓与拟合椭圆的相似度"] = [
-        round(x, round_score) for x in data["各个轮廓与拟合椭圆的相似度"]
-    ]
-    data["各个拟合椭圆离心率"] = [
-        round(x, round_score) for x in data["各个拟合椭圆离心率"]
-    ]
-
-    # 增加平均值、最大值、最小值
-    data["各个连通区域的面积_平均值"] = (
-        np.mean(data["各个连通区域的面积"])
-        if len(data["各个连通区域的面积"]) > 0
-        else 0
-    )
-    data["各个连通区域的面积_最大值"] = (
-        np.max(data["各个连通区域的面积"]) if len(data["各个连通区域的面积"]) > 0 else 0
-    )
-    data["各个连通区域的面积_最小值"] = (
-        np.min(data["各个连通区域的面积"]) if len(data["各个连通区域的面积"]) > 0 else 0
-    )
-
-    data["各个轮廓与拟合椭圆的相似度_平均值"] = (
-        np.mean(data["各个轮廓与拟合椭圆的相似度"])
-        if len(data["各个轮廓与拟合椭圆的相似度"]) > 0
-        else 0
-    )
-    data["各个轮廓与拟合椭圆的相似度_最大值"] = (
-        np.max(data["各个轮廓与拟合椭圆的相似度"])
-        if len(data["各个轮廓与拟合椭圆的相似度"]) > 0
-        else 0
-    )
-    data["各个轮廓与拟合椭圆的相似度_最小值"] = (
-        np.min(data["各个轮廓与拟合椭圆的相似度"])
-        if len(data["各个轮廓与拟合椭圆的相似度"]) > 0
-        else 0
-    )
-
-    data["各个拟合椭圆离心率_平均值"] = (
-        np.mean(data["各个拟合椭圆离心率"])
-        if len(data["各个拟合椭圆离心率"]) > 0
-        else 0
-    )
-    data["各个拟合椭圆离心率_最大值"] = (
-        np.max(data["各个拟合椭圆离心率"]) if len(data["各个拟合椭圆离心率"]) > 0 else 0
-    )
-    data["各个拟合椭圆离心率_最小值"] = (
-        np.min(data["各个拟合椭圆离心率"]) if len(data["各个拟合椭圆离心率"]) > 0 else 0
-    )
+    process_data(data, "各个连通区域的面积")
+    process_data(data, "各个轮廓与拟合椭圆的相似度")
+    process_data(data, "各个拟合椭圆离心率")
 
     return data
 
@@ -272,42 +236,46 @@ def process_images(images: str) -> None:
         ):
             datas.append(future.result())
 
-    # 保存为xlsx文件
-    df = pd.DataFrame(datas)
+    def process_dataframe(df: pd.DataFrame, filename: str) -> None:
+        # 为df开头插入 从1开始，列名为序号 的列
+        df.insert(0, "序号", range(1, len(df) + 1))
 
-    # 为df开头插入 从1开始，列名为序号 的列
-    df.insert(0, "序号", range(1, len(df) + 1))
+        # 尾部增加三行计算每列的平均， 最大， 最小
+        # 计算每列的平均值、最大值和最小值，排序元素类型是列表的列,仅仅计算数值列
+        # 选择数值列
+        numeric_cols = df.select_dtypes(include="number")
 
-    # 尾部增加三行计算每列的平均， 最大， 最小
-    # 计算每列的平均值、最大值和最小值，排序元素类型是列表的列,仅仅计算数值列
-    # 选择数值列
-    numeric_cols = df.select_dtypes(include="number")
+        # 计算每列的平均值、最大值和最小值
+        mean_values = numeric_cols.mean()
+        max_values = numeric_cols.max()
+        min_values = numeric_cols.min()
 
-    # 计算每列的平均值、最大值和最小值
-    mean_values = numeric_cols.mean()
-    max_values = numeric_cols.max()
-    min_values = numeric_cols.min()
+        # 将结果添加到 DataFrame 的尾部
 
-    # 将结果添加到 DataFrame 的尾部
+        # 将结果添加到 DataFrame 的尾部
+        df = pd.concat(
+            [
+                df,
+                pd.DataFrame(mean_values).T,
+                pd.DataFrame(max_values).T,
+                pd.DataFrame(min_values).T,
+            ],
+            ignore_index=True,
+        )
 
-    # 将结果添加到 DataFrame 的尾部
-    df = pd.concat(
-        [
-            df,
-            pd.DataFrame(mean_values).T,
-            pd.DataFrame(max_values).T,
-            pd.DataFrame(min_values).T,
-        ],
-        ignore_index=True,
-    )
+        # 数值列统一保留6位小数, 不足6位小数的补0
+        nc = numeric_cols.columns.tolist()
+        nc.remove("序号")
+        for col in nc:
+            df[col] = df[col].apply(lambda x: f"{x:.6f}" if pd.notna(x) else x)
 
-    # 重命名最后三行
-    df.iloc[-3:, 0] = ["平均值", "最大值", "最小值"]
+        # 重命名最后三行
+        df.iloc[-3:, 0] = ["平均值", "最大值", "最小值"]
 
-    # 数值列统一保留6位小数
-    df = df.round(6)
+        df.to_excel(f"{filename}.xlsx", index=False)
 
-    df.to_excel(f"{os.path.basename(images)}.xlsx", index=False)
+    # 使用函数处理DataFrame
+    process_dataframe(df=pd.DataFrame(datas), filename=os.path.basename(images))
 
 
 if __name__ == "__main__":
