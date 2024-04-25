@@ -6,5 +6,8 @@ pip install pandas
 pip install opencv-contrib-python
 pip install tqdm
 pip install openpyxl
+pip install pyautogui
+pip install imageio
+pip install scikit-learn
 
 
