@@ -267,7 +267,7 @@ def process_images(images: str) -> None:
         nc = numeric_cols.columns.tolist()
         nc.remove("序号")
         for col in nc:
-            df[col] = df[col].apply(lambda x: f"{x:.6f}" if pd.notna(x) else x)
+            df[col] = df[col].apply(lambda x: f"{x:.3f}" if pd.notna(x) else x)
 
         # 重命名最后三行
         df.iloc[-3:, 0] = ["平均值", "最大值", "最小值"]
