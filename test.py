@@ -1,4 +1,4 @@
-# from main import single_image_processing
+from main import single_image_processing
 from functions import *
 from PIL import Image
 from multiprocessing import Process
@@ -12,6 +12,13 @@ def crop_test():
     crop_image_white_background_opencv(test_image_path2, show_image=True)
 
 
+def test_single_image_processing():
+    single_image_processing(test_image_path1, show_image=True)
+    single_image_processing(test_image_path2, show_image=True)
+
+
 # print(image.size)
 
-crop_test()
+# crop_test()
+
+test_single_image_processing()
