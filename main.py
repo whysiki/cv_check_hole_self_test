@@ -227,7 +227,7 @@ def process_images(images: str) -> None:
         max_workers=ceil(cpu_count() / 2)
     ) as executor:
         futures = {
-            executor.submit(single_image_processing, image_path, False)
+            executor.submit(single_image_processing, image_path, True)
             for image_path in image_path_list
         }
 
